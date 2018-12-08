@@ -1,9 +1,7 @@
 import * as esp from 'esprima';
 
-import {Literal, BlockStatement,
-    ExpressionStatement, Identifier, IfStatement, ReturnStatement, VariableDeclaration, WhileStatement,
-    MemberExpression, BinaryExpression, UnaryExpression, SequenceExpression
-    , AssignmentExpression, ForStatement} from './Literals';
+import {BlockStatement, ExpressionStatement, IfStatement, ReturnStatement, VariableDeclaration, WhileStatement,
+    AssignmentExpression} from './Literals';
 
 const parseCode = (codeToParse, useLocation) => {
     return esp.parseScript(codeToParse, { loc:useLocation });
@@ -21,13 +19,13 @@ function parseGeneral(parsedStatement, variablesMapList, currentMap) {
         return;
 
     let typeToHandlerMapping = [];
-    typeToHandlerMapping[VariableDeclaration] = parseVariabledeclarationEx2;
-    typeToHandlerMapping[ExpressionStatement] = parseExpressionStatementEx2; //Wrapper type for assignment
-    typeToHandlerMapping[WhileStatement] = parseWhileStatementEx2;
-    typeToHandlerMapping[IfStatement] = parseIfOrElseStatementDispatcherEx2;
-    typeToHandlerMapping[ReturnStatement] = parseReturnStatementEx2;
-    typeToHandlerMapping[AssignmentExpression] = parseAssignmentExpressionEx2;
-    typeToHandlerMapping[BlockStatement] = parseBlockStatementEx2;
+    typeToHandlerMapping[VariableDeclaration] = parseVariabledeclaration;
+    typeToHandlerMapping[ExpressionStatement] = parseExpressionStatement; //Wrapper type for assignment
+    typeToHandlerMapping[WhileStatement] = parseWhileStatement;
+    typeToHandlerMapping[IfStatement] = parseIfOrElseStatementDispatcher;
+    typeToHandlerMapping[ReturnStatement] = parseReturnStatement;
+    typeToHandlerMapping[AssignmentExpression] = parseAssignmentExpression;
+    typeToHandlerMapping[BlockStatement] = parseBlockStatement;
 
     let func = typeToHandlerMapping [parsedStatement.type];
     if (!(func != null )) {
@@ -44,7 +42,7 @@ function parseVariabledeclaration(parsedStatement, variablesMapList, currentMap)
         return;
 
     parsedStatement.declerations.forEach(function(declarator){
-        parseVariabledeclaratorEx2(declarator,variablesMapList, currentMap);
+        parseVariabledeclarator(declarator,variablesMapList, currentMap);
     });
 }
 function parseVariabledeclarator(parsedStatement, variablesMapList, currentMap) {
@@ -69,14 +67,14 @@ function parseExpressionStatement(parsedStatement, variablesMapList, currentMap)
         return;
 
     let typeToHandlerMapping = [];
-    typeToHandlerMapping[AssignmentExpression] = parseAssignmentExpressionEx2;
+    typeToHandlerMapping[AssignmentExpression] = parseAssignmentExpression;
     let func = typeToHandlerMapping [parsedStatement.type];
     if (!(func != null )) {
         return;
     }
     func.call(this, parsedStatement, variablesMapList, currentMap);
 }
-function parseWhileStatementEx2(parsedStatement, variablesMapList, currentMap) {
+function parseWhileStatement(parsedStatement, variablesMapList, currentMap) {
     if (parsedStatement == null)
         return;
 
@@ -106,7 +104,7 @@ function parseIfStatement(parsedStatement, variablesMapList, currentMap) {
     else
         parseGeneral(parsedStatement.consequent,variablesMapList, currentMap);
 
-    parseIfOrElseStatementDispatcherEx2(parsedStatement.alternate, variablesMapList, new Map(currentMap)); //For new route send a new mapping
+    parseIfOrElseStatementDispatcher(parsedStatement.alternate, variablesMapList, new Map(currentMap)); //For new route send a new mapping
 }
 
 function parseBlockStatement(parsedStatement, variablesMapList, currentMap) {
