@@ -1,0 +1,118 @@
+/* **** START STYLING OF OUTPUT TABLE **** */
+body{
+    padding: 1em;
+}
+a{
+    color: #739931;
+}
+.page{
+    max-width: 60em;
+    margin: 0 auto;
+}
+table th,
+table td{
+    text-align: left;
+}
+table.layout{
+    width: 100%;
+    border-collapse: collapse;
+}
+table.display{
+    margin: 1em 0;
+}
+table.display th,
+table.display td{
+    border: 1px solid #B3BFAA;
+    padding: .5em 1em;
+}
+
+table.display th{ background: #D5E0CC; }
+table.display td{ background: #fff; }
+
+table.responsive-table{
+    box-shadow: 0 1px 10px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 30em){
+    table.responsive-table{
+        box-shadow: none;
+    }
+    table.responsive-table thead{
+        display: none;
+    }
+    table.display th,
+    table.display td{
+        padding: .5em;
+    }
+
+    table.responsive-table td:nth-child(1):before{
+        content: 'Number';
+    }
+    table.responsive-table td:nth-child(2):before{
+        content: 'Name';
+    }
+    table.responsive-table td:nth-child(1),
+    table.responsive-table td:nth-child(2){
+        padding-left: 25%;
+    }
+    table.responsive-table td:nth-child(1):before,
+    table.responsive-table td:nth-child(2):before{
+        position: absolute;
+        left: .5em;
+        font-weight: bold;
+    }
+
+    table.responsive-table tr,
+    table.responsive-table td{
+        display: block;
+    }
+    table.responsive-table tr{
+        position: relative;
+        margin-bottom: 1em;
+        box-shadow: 0 1px 10px rgba(0, 0, 0, 0.2);
+    }
+    table.responsive-table td{
+        border-top: none;
+    }
+    table.responsive-table td.organisationnumber{
+        background: #D5E0CC;
+        border-top: 1px solid #B3BFAA;
+    }
+    table.responsive-table td.actions{
+        position: absolute;
+        top: 0;
+        right: 0;
+        border: none;
+        background: none;
+    }
+}
+/* **** END STYLING OF OUTPUT TABLE **** */
+/* **** START STYLING OF TITLE **** */
+
+
+h1 { color: #ff4411; font-size: 48px; font-family: 'Signika', sans-serif; padding-bottom: 10px; }
+
+
+p { font-family: 'Inder', sans-serif; line-height: 28px; margin-bottom: 15px; color: #666; }
+
+
+a { color: #ff4411; transition: .5s; -moz-transition: .5s; -webkit-transition: .5s; -o-transition: .5s; }
+
+
+a:hover { color: #a03c21 }
+
+
+.date { float: left }
+
+
+.author { float: right }
+
+
+.entry-content { border-bottom: 3px solid #666; padding: 0 0 15px 0; margin-bottom: 8px; }
+
+
+.meta-info { padding: 5px; overflow: hidden; }
+
+
+.meta-info p { font-family: 'Fenix', serif; font-style: italic; color: #666; font-size: 16px; }
+/* **** END STYLING OF TITLE **** */
