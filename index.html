@@ -1,5 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+<head>
+    <style>
+        t {background-color: red}
+        f {background-color: green}
+    </style>
+</head>>
     <head>
         <link rel="stylesheet" href="styles.css">
     </head>
@@ -33,6 +39,11 @@
                 </td>
                 <td>
                     <div>
+                        <label>Enter initializations here</label>
+                    </div>
+                </td>
+                <td>
+                    <div>
                         <label>Parsed code here</label>
                     </div>
                 </td>
@@ -40,7 +51,31 @@
             <tr>
                 <td>
                     <div class="textAreaWrapper">
-                        <textarea id="codePlaceholder" title="Enter code here"></textarea>
+                        <textarea id="codePlaceholder" title="Enter code here">
+function foo(x, y, z){
+    let a = x + 1;
+    let b = a + y;
+    let c = 0;
+
+    if (b < z) {
+        c = c + 5;
+        return x + y + z + c;
+    } else if (b < z * 2) {
+        c = c + x + 5;
+        return x + y + z + c;
+    } else {
+        c = c + z + 5;
+        return x + y + z + c;
+    }
+}
+</textarea>
+                    </div>
+                </td>
+                <td>
+                    <div class="textAreaWrapper">
+                        <textarea id="initializationsPlaceholder" title="Enter initializations here">
+                            let x=1; let y=2; let z=3;
+                        </textarea>
                     </div>
                 </td>
                 <td>
@@ -59,24 +94,6 @@
                 </td>
             </tr>
         </table>
-
-        <!-- Line	Type	Name	Condition	Value -->
-        <div class="page">
-            <h1><u>Output</u></h1>
-            <table id="data table" class="layout display responsive-table">
-                <thead>
-                <tr>
-                    <th>Line</th>
-                    <th>Type</th>
-                    <th>Name</th>
-                    <th>Condition</th>
-                    <th>Value</th>
-                </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-        </div>
 
         <script src="dist/bundle.js"></script>
     </body>

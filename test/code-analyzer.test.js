@@ -1,21 +1,212 @@
-//import assert from 'assert';
+import assert from 'assert';
+import {getEnvironment, remove, checkRem, subUnary,
+    subMember, subBinary, sub, parseReturnStatement, parseBlockStatement,
+    parseIfOrElseStatementDispatcher, parseWhileStatement, parseSecondLayerStatementDispatcher,
+    parseFunctionDeclaration, parseSecondLayer, parseExpressionStatement, parseVariableDeclaration,
+    parseFirstLayerDispatcher, parseFirstLayer, getRoutes} from '../src/js/code-analyzer';
 
-/*
-describe('Unit Testing - parseBinaryExpressionDispatcher', () => {
-    //Calculations
-    it('Literal - \'1\'', () => {testParseBinaryExpression('{"type":"ExpressionStatement","expression":{"type":"Literal","value":1,"raw":"1"}}','1');});
-    it('Literal - \'-1\'', () => {testParseBinaryExpression('{"type":"ExpressionStatement","expression":{"type":"Literal","value":1,"raw":"1"}}','1');});
-    it('MemberExpression - \'v[2]\'', () => {testParseBinaryExpression('{"type":"MemberExpression","computed":true,"object":{"type":"Identifier","name":"v","loc":{"start":{"line":9,"column":17},"end":{"line":9,"column":18}}},"property":{"type":"Literal","value":2,"raw":"1","loc":{"start":{"line":9,"column":19},"end":{"line":9,"column":20}}},"loc":{"start":{"line":9,"column":17},"end":{"line":9,"column":21}}}','v[2]');});
-    it('BinaryExpression between Literals - \'1+2\'', () => {testParseBinaryExpression('{"type":"BinaryExpression","operator":"+","left":{"type":"Literal","value":1,"raw":"1"},"right":{"type":"Literal","value":2,"raw":"2"}}','1+2');});
-    it('BinaryExpression between MemberExpressions - \'array1[2]+array2[2]\'', () => {testParseBinaryExpression('{"type":"BinaryExpression","operator":"+","left":{"type":"MemberExpression","computed":true,"object":{"type":"Identifier","name":"array1"},"property":{"type":"Literal","value":2,"raw":"2"}},"right":{"type":"MemberExpression","computed":true,"object":{"type":"Identifier","name":"array2"},"property":{"type":"Literal","value":2,"raw":"2"}}}','array1[2]+array2[2]');});
-    it('BinaryExpression between MemberExpression and literal - \'array1[2]+5\'', () => {testParseBinaryExpression('{"type":"BinaryExpression","operator":"+","left":{"type":"MemberExpression","computed":true,"object":{"type":"Identifier","name":"array1"},"property":{"type":"Literal","value":2,"raw":"2"}},"right":{"type":"Literal","value":5,"raw":"5"}}','array1[2]+5');});
-    it('BinaryExpression between Identifiers - \'n+m\'', () => {testParseBinaryExpression('{"type":"BinaryExpression","operator":"+","left":{"type":"Identifier","name":"n"},"right":{"type":"Identifier","name":"m"}}','n+m');});
-    it('Nested BinaryExpression between Identifiers - \'n+m+x\'', () => {testParseBinaryExpression('{"type":"BinaryExpression","operator":"+","left":{"type":"BinaryExpression","operator":"+","left":{"type":"Identifier","name":"n"},"right":{"type":"Identifier","name":"m"}},"right":{"type":"Identifier","name":"x"}}','n+m+x');});
-    it('Nested BinaryExpression between Identifiers - \'v[2]+a[0]+arr[3]\'', () => {testParseBinaryExpression('{"type":"BinaryExpression","operator":"+","left":{"type":"BinaryExpression","operator":"+","left":{"type":"MemberExpression","computed":true,"object":{"type":"Identifier","name":"v"},"property":{"type":"Literal","value":2,"raw":"2"}},"right":{"type":"MemberExpression","computed":true,"object":{"type":"Identifier","name":"a"},"property":{"type":"Literal","value":0,"raw":"0"}}},"right":{"type":"MemberExpression","computed":true,"object":{"type":"Identifier","name":"arr"},"property":{"type":"Literal","value":3,"raw":"3"}}}','v[2]+a[0]+arr[3]');});
-    it('Nested BinaryExpression between Identifiers - \'1+2-3\'', () => {testParseBinaryExpression('{"type":"BinaryExpression","operator":"-","left":{"type":"BinaryExpression","operator":"+","left":{"type":"Literal","value":1,"raw":"1"},"right":{"type":"Literal","value":2,"raw":"2"}},"right":{"type":"Literal","value":3,"raw":"3"}}','1+2-3');});
-    let expected12 = [];
-    it('- null', () => { let value = [];
-        parseBinaryExpressionDispatcher(null, value);  assert.deepEqual(value,expected12);
+
+describe('Unit Testing - remove', () => {
+    it('', () => {
+        let arr = [1];
+        remove(1,arr);
+        assert.deepEqual(arr,[]);
     });
 });
-*/
+describe('Unit Testing - checkRem', () => {
+    it('', () => {
+        let arr = [];
+        checkRem(1,arr);
+        assert.deepEqual(arr,[1]);
+    });
+});
+describe('Unit Testing - subUnary', () => {
+    it('', () => {
+        let m = new Map();
+        m.set('a',1);
+        let b4 = {'type':'UnaryExpression','operator':'-','argument':{'type':'Identifier','name':'a'},'prefix':true};
+        subUnary(b4, m);
+        assert.deepEqual(b4,{'type':'UnaryExpression','operator':'-','argument':1,'prefix':true});
+    });
+});
+describe('Unit Testing - subMember', () => {
+    it('', () => {
+        let m = new Map();
+        m.set('a',1);
+        let b4 = {'type':'MemberExpression','computed':true,'object':{'type':'Identifier','name':'arr'},'property':{'type':'Identifier','name':'a'}};
+        subMember(b4, m);
+        assert.deepEqual(b4,{'type':'MemberExpression','computed':true,'object':{'type':'Identifier','name':'arr'},'property':1});
+    });
+});
+describe('Unit Testing - subBinary', () => {
+    it('', () => {
+        let m = new Map();
+        m.set('a',1);
+        let b4 = {'type':'BinaryExpression','operator':'+','left':{'type':'Identifier','name':'a'},'right':{'type':'Literal','value':2,'raw':'2'}};
+        subBinary(b4, m);
+        assert.deepEqual(b4,{'type':'BinaryExpression','operator':'+','left':1,'right':{'type':'Literal','value':2,'raw':'2'}});
+    });
+});
+describe('Unit Testing - subBinary', () => {
+    it('', () => {
+        let m = new Map();
+        m.set('a',1);
+        let b4 = {'type':'BinaryExpression','operator':'+','left':{'type':'Literal','value':2,'raw':'2'},'right':{'type':'Identifier','name':'a'}};
+        subBinary(b4, m);
+        assert.deepEqual(b4,{'type':'BinaryExpression','operator':'+','left':{'type':'Literal','value':2,'raw':'2'},'right':1});
+    });
+});
+describe('Unit Testing - sub', () => {
+    it('', () => {
+        let m = new Map();
+        m.set('a',1);
+        let b4 = {};
+        sub(b4, m);
+        assert.deepEqual(b4,{});
+    });
+});
+describe('Unit Testing - sub', () => {
+    it('', () => {
+        let m = new Map();
+        m.set('a',1);
+        let b4 = {'type':'BinaryExpression','operator':'+','left':{'type':'Literal','value':2,'raw':'2'},'right':{'type':'Literal','value':1,'raw':'1'}};
+        sub(b4, m);
+        assert.deepEqual(b4,{'type':'BinaryExpression','operator':'+','left':{'type':'Literal','value':2,'raw':'2'},'right':{'type':'Literal','value':1,'raw':'1'}});
+    });
+});
+describe('Unit Testing - parseReturnStatement', () => {
+    it('', () => {
+        let m = new Map();
+        m.set('a',1);
+        let b4 = {'type':'ReturnStatement','argument':{'type':'Identifier','name':'a'}};
+        parseReturnStatement(b4, m);
+        assert.deepEqual(b4,{'type':'ReturnStatement','argument':1});
+    });
+});
+describe('Unit Testing - parseBlockStatement', () => {
+    it('', () => {
+        let m = new Map();
+        m.set('a',1);
+        let b4 = {'type':'BlockStatement','body':[{'type':'ola'}]};
+        parseBlockStatement(b4, m);
+        assert.deepEqual(JSON.stringify(b4),JSON.stringify({'type':'BlockStatement','body':[]}));
+    });
+});
+describe('Unit Testing - parseIfOrElseStatementDispatcher', () => {
+    it('', () => {
+        let m = new Map();
+        m.set('a',1);
+        let b4 = {'type':'IfStatement','test':{'type':'BinaryExpression','operator':'<','left':{'type':'Literal','value':1,'raw':'1'},'right':{'type':'Literal','value':2,'raw':'2'}},'consequent':{'type':'BlockStatement','body':[]},'alternate':{'type':'BlockStatement','body':[]}};
+        parseIfOrElseStatementDispatcher(b4, m);
+        assert.deepEqual(b4,{'type':'IfStatement','test':{'type':'BinaryExpression','operator':'<','left':{'type':'Literal','value':1,'raw':'1'},'right':{'type':'Literal','value':2,'raw':'2'}},'consequent':{'type':'BlockStatement','body':[]},'alternate':{'type':'BlockStatement','body':[]}});
+    });
+});
+describe('Unit Testing - parseWhileStatement', () => {
+    it('', () => {
+        let m = new Map();
+        m.set('a',1);
+        let b4 = {'type':'WhileStatement','test':{'type':'BinaryExpression','operator':'<','left':{'type':'Literal','value':1,'raw':'1'},'right':{'type':'Literal','value':2,'raw':'2'}},'body':{'type':'BlockStatement','body':[]}};
+        parseWhileStatement(b4, m);
+        assert.deepEqual(b4,{'type':'WhileStatement','test':{'type':'BinaryExpression','operator':'<','left':{'type':'Literal','value':1,'raw':'1'},'right':{'type':'Literal','value':2,'raw':'2'}},'body':{'type':'BlockStatement','body':[]}});
+    });
+});
+describe('Unit Testing - parseWhileStatement', () => {
+    it('', () => {
+        let m = new Map();
+        m.set('a',1);
+        let b4 = {'type':'WhileStatement','test':{'type':'BinaryExpression','operator':'<','left':{'type':'Literal','value':1,'raw':'1'},'right':{'type':'Literal','value':2,'raw':'2'}},'body':{'type':'BlockStatement','body':[{'type':'ola'}]}};
+        parseWhileStatement(b4, m);
+        assert.deepEqual(b4,{'type':'WhileStatement','test':{'type':'BinaryExpression','operator':'<','left':{'type':'Literal','value':1,'raw':'1'},'right':{'type':'Literal','value':2,'raw':'2'}},'body':{'type':'BlockStatement','body':[]}});
+    });
+});
+describe('Unit Testing - parseSecondLayerStatementDispatcher', () => {
+    it('', () => {
+        let m = new Map();
+        m.set('a',1);
+        let b4 = {'type':'ola'};
+        parseSecondLayerStatementDispatcher(b4, m);
+        assert.deepEqual(b4,{'type':'ola'});
+    });
+});
+describe('Unit Testing - parseFunctionDeclaration', () => {
+    it('', () => {
+        let m = new Map();
+        m.set('a',1);
+        let b4 = {'type':'FunctionDeclaration','id':{'type':'Identifier','name':'p'},'params':[],'body':{'type':'BlockStatement','body':[{'type':'ola'}]},'generator':false,'expression':false,'async':false};
+        parseFunctionDeclaration(b4, m);
+        assert.deepEqual(b4,{'type':'FunctionDeclaration','id':{'type':'Identifier','name':'p'},'params':[],'body':{'type':'BlockStatement','body':[]},'generator':false,'expression':false,'async':false});
+    });
+});
+describe('Unit Testing - parseSecondLayer', () => {
+    it('', () => {
+        let m = new Map();
+        m.set('a',1);
+        let b4 = {'type':'FunctionDeclaration','id':{'type':'Identifier','name':'p'},'params':[],'body':{'type':'BlockStatement','body':[]},'generator':false,'expression':false,'async':false};
+        parseSecondLayer(b4, m);
+        assert.deepEqual(b4,{'type':'FunctionDeclaration','id':{'type':'Identifier','name':'p'},'params':[],'body':{'type':'BlockStatement','body':[]},'generator':false,'expression':false,'async':false});
+    });
+});
+describe('Unit Testing - parseExpressionStatement', () => {
+    it('', () => {
+        let m = new Map();
+        m.set('a',1);
+        let b4 = {'type':'ExpressionStatement','expression':{'type':'AssignmentExpression','operator':'=','left':{'type':'Identifier','name':'b'},'right':{'type':'Identifier','name':'a'}}};
+        parseExpressionStatement(b4, m);
+        assert.deepEqual(b4,{'type':'ExpressionStatement','expression':{'type':'AssignmentExpression','operator':'=','left':{'type':'Identifier','name':'b'},'right':1}});
+    });
+});
+describe('Unit Testing - parseVariableDeclaration', () => {
+    it('', () => {
+        let m = new Map();
+        m.set('a',1);
+        let b4 = {'type':'VariableDeclaration','declarations':[{'type':'VariableDeclarator','id':{'type':'Identifier','name':'b'},'init':{'type':'Identifier','name':'a'}}],'kind':'let'};
+        parseVariableDeclaration(b4, m);
+        assert.deepEqual(b4,{'type':'VariableDeclaration','declarations':[{'type':'VariableDeclarator','id':{'type':'Identifier','name':'b'},'init':1}],'kind':'let'});
+    });
+});
+describe('Unit Testing - parseFirstLayerDispatcher', () => {
+    it('', () => {
+        let m = new Map();
+        m.set('a',1);
+        let b4 = {'type':'ola'};
+        parseFirstLayerDispatcher(b4, m);
+        assert.deepEqual(b4,{'type':'ola'});
+    });
+});
+describe('Unit Testing - getEnvironment', () => {
+    it('', () => {
+        let e = getEnvironment('let x=1;');
+        assert.deepEqual(e,{});
+    });
+});
+describe('Unit Testing - getEnvironment', () => {
+    it('', () => {
+        let e = getEnvironment('');
+        assert.deepEqual(e,{});
+    });
+});
+describe('Unit Testing - parseFirstLayerDispatcher', () => {
+    it('', () => {
+        let m = new Map();
+        m.set('a',1);
+        let b4 = {'type':'BlockStatement','body':[]};
+        parseFirstLayerDispatcher(b4, m);
+        assert.deepEqual(b4,{'type':'BlockStatement','body':[]});
+    });
+});
+describe('Unit Testing - parseFirstLayer', () => {
+    it('', () => {
+        let m = new Map();
+        m.set('a',1);
+        let b4 = {'type':'Program','body':[{'type':'FunctionDeclaration','id':{'type':'Identifier','name':'p'},'params':[],'body':{'type':'BlockStatement','body':[]},'generator':false,'expression':false,'async':false}],'sourceType':'script'};
+        parseFirstLayer(b4, m);
+        assert.deepEqual(b4,{'type':'Program','body':[{'type':'FunctionDeclaration','id':{'type':'Identifier','name':'p'},'params':[],'body':{'type':'BlockStatement','body':[]},'generator':false,'expression':false,'async':false}],'sourceType':'script'});
+    });
+});
+describe('Unit Testing - getRoutes', () => {
+    it('', () => {
+        let b4 = '';
+        let res = getRoutes(b4);
+        assert.deepEqual({'type':'Program','body':[],'loc':{'end':{'column':0,'line':0},'start':{'column':0,'line':0}},'sourceType':'script'},res);
+    });
+});

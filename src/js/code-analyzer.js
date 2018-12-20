@@ -1,131 +1,271 @@
 import * as esp from 'esprima';
 
-import {BlockStatement, ExpressionStatement, IfStatement, ReturnStatement, VariableDeclaration, WhileStatement,
-    AssignmentExpression} from './Literals';
+const VariableDeclaration = 'VariableDeclaration';
+const FunctionDeclaration = 'FunctionDeclaration';
+const BlockStatement = 'BlockStatement';
+const ExpressionStatement = 'ExpressionStatement';
+const IfStatement = 'IfStatement';
+const ReturnStatement = 'ReturnStatement';
+const WhileStatement = 'WhileStatement';
+const AssignmentExpression = 'AssignmentExpression';
+const BinaryExpression = 'BinaryExpression';
+const Identifier = 'Identifier';
+const UnaryExpression = 'UnaryExpression';
 
-const parseCode = (codeToParse, useLocation) => {
-    return esp.parseScript(codeToParse, { loc:useLocation });
-};
 
-
-/**
- * Receives an esprima statement, which is loop or initialization or assignment, parses it and updates the variablesMapList accordingly
- * @param parsedStatement The esprima statement to be parsed
- * @param variablesMapList A list of mappings, there is a collection of mappings to simulate different routes in the program (e.g if/else)
- * @param currentMap The Map for the current route.
- */
-function parseGeneral(parsedStatement, variablesMapList, currentMap) {
-    if (parsedStatement == null)
-        return;
-
-    let typeToHandlerMapping = [];
-    typeToHandlerMapping[VariableDeclaration] = parseVariabledeclaration;
-    typeToHandlerMapping[ExpressionStatement] = parseExpressionStatement; //Wrapper type for assignment
-    typeToHandlerMapping[WhileStatement] = parseWhileStatement;
-    typeToHandlerMapping[IfStatement] = parseIfOrElseStatementDispatcher;
-    typeToHandlerMapping[ReturnStatement] = parseReturnStatement;
-    typeToHandlerMapping[AssignmentExpression] = parseAssignmentExpression;
-    typeToHandlerMapping[BlockStatement] = parseBlockStatement;
-
-    let func = typeToHandlerMapping [parsedStatement.type];
-    if (!(func != null )) {
-        return;
+function getEnvironment(initializationsInput){
+    let environment = new Map();
+    if (initializationsInput !== '')
+    {
+        let parsedInits = esp.parseScript(initializationsInput);
+        parsedInits.body.forEach(function(init){
+            parseVariableDeclaration(init,environment,null);
+        });
     }
-    func.call(this, parsedStatement, variablesMapList, currentMap);
+    // Deep copy
+    return environment;
+}
+function getRoutes (codeInput) {
+    let code = esp.parseScript(codeInput, {loc:true});
+    parseFirstLayer(code,new Map());
+    return code;
 }
 
-/**
- * Wrapper for declarations
- */
-function parseVariabledeclaration(parsedStatement, variablesMapList, currentMap) {
-    if (parsedStatement == null)
-        return;
-
-    parsedStatement.declerations.forEach(function(declarator){
-        parseVariabledeclarator(declarator,variablesMapList, currentMap);
+function parseFirstLayer(code, environment) {
+    let toR = [];
+    code.body.forEach(function(firstLayerStatement) {
+        parseFirstLayerDispatcher(firstLayerStatement, environment);
+        checkRem(firstLayerStatement, toR);
+    });
+    toR.forEach(function(r) {
+        remove(r,code.body);
     });
 }
-function parseVariabledeclarator(parsedStatement, variablesMapList, currentMap) {
-    if (parsedStatement == null)
-        return;
 
-    let id = parsedStatement.Identifier;
-    let val = '';
-    if (parsedStatement.init !== null)
-        val = parsedStatement.init.toString();
-    if (currentMap.has(id))
-        currentMap.set(id, currentMap.get(id)+val);
-    else
-        currentMap.set(id,val);
-}
+function parseFirstLayerDispatcher(firstLayerStatement, environment) {
+    let typeToHandlerMapping = new Map();
+    typeToHandlerMapping.set(VariableDeclaration , parseVariableDeclaration) ;
+    typeToHandlerMapping.set(ExpressionStatement , parseExpressionStatement) ;//Wrapper type for assignment
+    typeToHandlerMapping.set(AssignmentExpression, parseAssignmentExpression);
+    typeToHandlerMapping.set(FunctionDeclaration , parseFunctionDeclaration) ;
 
-/**
- * Wrapper for assignment expressions
- */
-function parseExpressionStatement(parsedStatement, variablesMapList, currentMap) {
-    if (parsedStatement == null)
-        return;
-
-    let typeToHandlerMapping = [];
-    typeToHandlerMapping[AssignmentExpression] = parseAssignmentExpression;
-    let func = typeToHandlerMapping [parsedStatement.type];
+    let func = typeToHandlerMapping.get(firstLayerStatement.type);
     if (!(func != null )) {
         return;
     }
-    func.call(this, parsedStatement, variablesMapList, currentMap);
+    func.call(this, firstLayerStatement, environment);
 }
-function parseWhileStatement(parsedStatement, variablesMapList, currentMap) {
-    if (parsedStatement == null)
+
+/**
+ * Wrapper for VariableDeclarator
+ */
+function parseVariableDeclaration(firstLayerStatement, environment) {
+    firstLayerStatement.declarations.forEach(function (declaration) {
+        parseVariableDeclarator(declaration, environment);
+    });
+}
+
+function parseVariableDeclarator(firstLayerStatement, environment) {
+    if (firstLayerStatement.init.type === (Identifier))
+    {
+        if (environment.has(firstLayerStatement.init.name))
+        {
+            firstLayerStatement.init = environment.get(firstLayerStatement.init.name);
+        }
+    }
+    sub(firstLayerStatement.init,environment);
+    let value = firstLayerStatement.init;
+    environment.set(firstLayerStatement.id.name,value);
+}
+
+/**
+ * Wrapper for assignment
+ */
+function parseExpressionStatement(firstLayerStatement, environment) {
+    parseAssignmentExpression(firstLayerStatement.expression, environment);
+}
+function parseAssignmentExpression(statement, environment) {
+
+    if (statement.right.type === (Identifier))
+    {
+        if (environment.has(statement.right.name))
+        {
+            statement.right = environment.get(statement.right.name);
+        }
+    }
+    sub(statement.right,environment);
+    let value = statement.right;
+    environment.set(statement.left.name,value);
+}
+function parseFunctionDeclaration(firstLayerStatement, environment) {
+    //firstLayerStatement.params.forEach(function (param) {
+    //    environment.set(param,null);
+    //});
+    parseSecondLayer(firstLayerStatement, environment);
+}
+
+
+function parseSecondLayer(func, environment) {
+    let functionBody = func.body;
+    let toR = [];
+    functionBody.body.forEach(function(secondLayerStatement) {
+        parseSecondLayerStatementDispatcher(secondLayerStatement, environment);
+        checkRem(secondLayerStatement,  toR);
+    });
+    toR.forEach(function(r) {
+        remove(r,functionBody.body);
+    });
+}
+
+function parseSecondLayerStatementDispatcher(secondLayerStatement, environment) {
+    let typeToHandler = [];
+    typeToHandler[VariableDeclaration] = parseVariableDeclaration;
+    typeToHandler[ExpressionStatement] = parseExpressionStatement; //Wrapper type for assignment
+    typeToHandler[WhileStatement] = parseWhileStatement;
+    typeToHandler[IfStatement] = parseIfOrElseStatementDispatcher;
+    typeToHandler[ReturnStatement] = parseReturnStatement;
+    typeToHandler[AssignmentExpression] = parseAssignmentExpression;
+    typeToHandler[BlockStatement] = parseBlockStatement;
+
+    let func = typeToHandler [secondLayerStatement.type];
+    if (!(func != null )) {
         return;
-
+    }
+    func.call(this, secondLayerStatement, environment);
 }
 
-function parseIfOrElseStatementDispatcher(parsedStatement, variablesMapList, currentMap) {
-    if (parsedStatement == null)
+function parseWhileStatement(statement, environment) {
+    sub(statement.test,environment);
+    let toR = [];
+    let whileBody = statement.body;
+    whileBody.body.forEach(function (innerStatement) {
+        parseSecondLayerStatementDispatcher(innerStatement,environment);
+        checkRem(innerStatement, toR);
+    });
+    toR.forEach(function(r) {
+        remove(r,whileBody.body);
+    });
+}
+
+/**
+ * There is no such thing as ElseStatement, it is the alternate of an IfStatement, as a BlockStatement
+ */
+function parseIfOrElseStatementDispatcher(statement, environment) {
+    sub(statement.test, environment);
+    let newEnvironment1 = new Map();
+    environment.forEach(function (value, key) {
+        newEnvironment1.set(key,value);
+    });
+    parseSecondLayerStatementDispatcher(statement.consequent, newEnvironment1);
+
+    if (statement.alternate !== null)
+    {
+        let newEnvironment2 = new Map();
+        environment.forEach(function (value, key) {
+            newEnvironment2.set(key,value);
+        });
+        parseSecondLayerStatementDispatcher(statement.alternate,newEnvironment2);
+    }
+}
+
+function parseBlockStatement(statement, environment) {
+    let toR = [];
+    statement.body.forEach(function (exp) {
+        parseSecondLayerStatementDispatcher(exp,environment);
+        checkRem(exp, toR);
+    });
+    toR.forEach(function(r) {
+        remove(r,statement.body);
+    });
+}
+
+function parseReturnStatement(statement, environment) {
+    if (statement.argument.type === (Identifier))
+    {
+        if (environment.has(statement.argument.name))
+        {
+            statement.argument = environment.get(statement.argument.name);
+        }
+    }
+    sub(statement.argument,environment);
+}
+
+function sub(statement, environment) {
+    let typeToHandler = [];
+    typeToHandler[BinaryExpression  ]   = subBinary;
+    typeToHandler['MemberExpression']   = subMember; //Wrapper type for assignment
+    typeToHandler[UnaryExpression   ]   = subUnary ;
+
+    let func = typeToHandler [statement.type];
+    if (!(func != null )) {
         return;
-
-    let typeToHandlerMapping = [];
-    typeToHandlerMapping [IfStatement] = parseIfStatement;
-    typeToHandlerMapping [BlockStatement] = parseBlockStatement;
-
-    let func = typeToHandlerMapping [parsedStatement.type];
-    if (func!=null)
-        func.call(this, parsedStatement,variablesMapList, currentMap);
-    else
-        parseGeneral(parsedStatement,variablesMapList, currentMap);
+    }
+    func.call(this, statement, environment);
 }
 
-function parseIfStatement(parsedStatement, variablesMapList, currentMap) {
-    if (parsedStatement == null)
-        return;
-
-    if (parsedStatement.consequent.type === BlockStatement)  // Parse body
-        parsedStatement.consequent.body.forEach(function (exp) {parseGeneral(exp,variablesMapList, currentMap);});
-    else
-        parseGeneral(parsedStatement.consequent,variablesMapList, currentMap);
-
-    parseIfOrElseStatementDispatcher(parsedStatement.alternate, variablesMapList, new Map(currentMap)); //For new route send a new mapping
+function subBinary(statement, environment) {
+    if (statement.left.type === (Identifier))
+    {
+        if (environment.has(statement.left.name))
+        {
+            statement.left = environment.get(statement.left.name);
+        }
+    }
+    if (statement.right.type === (Identifier))
+    {
+        if (environment.has(statement.right.name))
+        {
+            statement.right = environment.get(statement.right.name);
+        }
+    }
+    sub(statement.right,environment);
+    sub(statement.left,environment);
+}
+function subMember(statement, environment) {
+    if (statement.property.type === (Identifier))
+    {
+        if (environment.has(statement.property.name))
+        {
+            statement.property = environment.get(statement.property.name);
+        }
+    }
+    sub(statement.property,environment);
+}
+function subUnary(statement, environment) {
+    if (statement.argument.type === (Identifier))
+    {
+        if (environment.has(statement.argument.name))
+        {
+            statement.argument = environment.get(statement.argument.name);
+        }
+    }
+    sub(statement.argument,environment);
 }
 
-function parseBlockStatement(parsedStatement, variablesMapList, currentMap) {
-    if (parsedStatement == null)
-        return;
-
-    parsedStatement.consequent.body.forEach(function (exp) {parseGeneral(exp,variablesMapList, currentMap);});
+/////////////////////// util ////////////////////////////
+function remove(toRemove, array) {
+    let index = array.indexOf(toRemove);
+    if (index > -1) {
+        array.splice(index, 1);
+    }
 }
 
-function parseReturnStatement(parsedStatement, variablesMapList, currentMap) {
-    if (parsedStatement == null)
-        return;
-
-}
-function parseAssignmentExpression(parsedStatement, variablesMapList, currentMap) {
-    if (parsedStatement == null)
-        return;
-
+function checkRem(toRemove,keep) {
+    if (toRemove.type !== IfStatement && toRemove.type !== ReturnStatement && toRemove.type !== WhileStatement
+        && toRemove.type !== FunctionDeclaration)
+        keep.push(toRemove);
 }
 
+export {getRoutes, getEnvironment, remove, checkRem, subUnary, subMember,
+    subBinary, sub, parseReturnStatement, parseBlockStatement, parseIfOrElseStatementDispatcher,
+    parseWhileStatement, parseSecondLayerStatementDispatcher, parseFunctionDeclaration, parseSecondLayer,
+    parseExpressionStatement, parseVariableDeclaration, parseFirstLayerDispatcher, parseFirstLayer};
 
-
-
-export {parseCode};
+//////////////////////////
+/*
+1. Analyze the whole program, generate a collection of objects who are:
+    a. A collection of inits/assignments
+    b. An IfElse collection
+2. Input will also be a collection as (a)
+3. Recursive function which receives a list of these objects, and a environment, while parsing also write.
+ */
