@@ -123,6 +123,13 @@ function parseIfBody(consequent, environment) {
         parseSecondLayerStatementDispatcher(consequent,environment);
 }
 
+function redraw(statement, environment, cumulativeIsTrue, t) {
+    if (cumulativeIsTrue && t)
+    {
+        programRows[statement.loc.start.line-1].style.backgroundColor = 'tomato';
+    }
+}
+
 function parseNextIf(statement, environment, cumulativeIsTrue) {
     let t = colorStatement(statement,environment);
     if (statement.alternate.type !== IfStatement)
@@ -134,6 +141,7 @@ function parseNextIf(statement, environment, cumulativeIsTrue) {
             parseSecondLayerStatementDispatcher(statement.alternate,environment);
             programRows[statement.alternate.loc.start.line-1].style.backgroundColor = 'tomato';
         }
+        redraw(statement, environment, cumulativeIsTrue,t);
     }
     else
     {
