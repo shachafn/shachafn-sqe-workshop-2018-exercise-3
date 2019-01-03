@@ -10,6 +10,8 @@ const WhileStatement = 'WhileStatement';
 
 var result;
 var programRows = [];
+var greenStatementsIndexes = [];
+var redStatementsIndexes = [];
 
 function writeResult() {
     let resultRows = esco.generate(result).split('\n');
@@ -79,9 +81,9 @@ function colorStatement(statement, environment) {
     let expr = parser.parse(codeForTest);
     let isTrue = expr.evaluate(environmentForParser);
     if (isTrue)
-        programRows[statement.loc.start.line-1].style.backgroundColor = '#739931';
+        greenStatementsIndexes.push(statement.loc.start.line-1);
     else
-        programRows[statement.loc.start.line-1].style.backgroundColor = 'tomato';
+        redStatementsIndexes.push(statement.loc.start.line-1);
 
     return isTrue;
 }
@@ -126,7 +128,7 @@ function parseIfBody(consequent, environment) {
 function redraw(statement, environment, cumulativeIsTrue, t) {
     if (cumulativeIsTrue && t)
     {
-        programRows[statement.loc.start.line-1].style.backgroundColor = 'tomato';
+        redStatementsIndexes.push(statement.loc.start.line-1);
     }
 }
 
@@ -135,11 +137,11 @@ function parseNextIf(statement, environment, cumulativeIsTrue) {
     if (statement.alternate.type !== IfStatement)
     {
         if (!t && !cumulativeIsTrue)
-            programRows[statement.alternate.loc.start.line-1].style.backgroundColor = '#739931';
+            greenStatementsIndexes.push(statement.alternate.loc.start.line-1);
         else
         {
             parseSecondLayerStatementDispatcher(statement.alternate,environment);
-            programRows[statement.alternate.loc.start.line-1].style.backgroundColor = 'tomato';
+            redStatementsIndexes.push(statement.alternate.loc.start.line-1);
         }
         redraw(statement, environment, cumulativeIsTrue,t);
     }
