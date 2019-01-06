@@ -8,7 +8,6 @@ const IfStatement = 'IfStatement';
 const ReturnStatement = 'ReturnStatement';
 const WhileStatement = 'WhileStatement';
 const AssignmentExpression = 'AssignmentExpression';
-const UpdateExpression = 'UpdateExpression';
 const BinaryExpression = 'BinaryExpression';
 const Identifier = 'Identifier';
 const UnaryExpression = 'UnaryExpression';
@@ -16,11 +15,13 @@ const UnaryExpression = 'UnaryExpression';
 import {nodes} from './app';
 export {createNodes};
 let nodeIndex = 1;
+let conditionsIndexes;
 let statementToNodeMap;
 function createNodes(esprimaParsedCode) {
     //"n1 [label=\"-1-\n let a = x + 1\", shape=rectangle, style = filled, fillcolor = green];\n",
+    conditionsIndexes = [];
     statementToNodeMap = new Map();
-    esprimaParsedCode.body[0].body.body.forEach(function (esprimaStatement) {
+    let stmts = esprimaParsedCode.body[0].body.body.forEach(function (esprimaStatement) {
         createNodeFromStatement(esprimaStatement);
     });
 }
@@ -53,12 +54,14 @@ function createNodeFromIfStatement(esprimaStatement) {
     nodes.push(node);
     statementToNodeMap.set(originalStatement,nodeIndex);
     nodeIndex++;
+    conditionsIndexes.push(nodeIndex); //Remember for true edge
     esprimaStatement.consequent.body.forEach(function (innerEsprimaStatement) {
         createNodeFromStatement(innerEsprimaStatement);
     });
     if (esprimaStatement.alternate !== null)
         createNodesFromAlternate(esprimaStatement.alternate);
 
+    conditionsIndexes.push(nodeIndex); //Remember for false edge
 
 }
 
@@ -67,6 +70,7 @@ function createNodesFromAlternate(esprimaStatement) {
         createNodeFromIfStatement(esprimaStatement);
     }
     else { //body
+        conditionsIndexes.push(nodeIndex+1);
         esprimaStatement.body.forEach(function (innerEsprimaStatement) {
             createNodeFromStatement(innerEsprimaStatement);
         });
@@ -80,9 +84,11 @@ function createNodeFromWhileStatement(esprimaStatement) {
     nodes.push(node);
     statementToNodeMap.set(originalStatement,nodeIndex);
     nodeIndex++;
+    conditionsIndexes.push(nodeIndex); //Remember for true edge
     esprimaStatement.body.body.forEach(function (innerEsprimaStatement) {
         createNodeFromStatement(innerEsprimaStatement);
     });
+    conditionsIndexes.push(nodeIndex); //Remember for false edge
 }
 
 import {edges} from './app';
@@ -110,7 +116,6 @@ function createEdgesFromStatement(esprimaStatement, prevStatement, nextStatement
     func.call(this, esprimaStatement, prevStatement, nextStatement);
 
 }
-export {getNodeIndexFromStatement};
 function getNodeIndexFromStatement(esprimaStatement) {
     return statementToNodeMap.get(esco.generate(
         esprimaStatement.type === IfStatement || esprimaStatement.type === WhileStatement ?
@@ -123,7 +128,7 @@ function createEdgeFromSimpleStatement(esprimaStatement, prevStatement) {
 }
 
 function createEdgeToCurrent(esprimaStatement, prevStatement) {
-    if (prevStatement.type !== IfStatement && prevStatement.type !== WhileStatement) {
+    if (prevStatement.type !== IfStatement && prevStatement !== WhileStatement) {
         let from = getNodeIndexFromStatement(prevStatement);
         let to = getNodeIndexFromStatement(esprimaStatement);
         let edge = `n${from} -> n${to};`;
@@ -177,13 +182,13 @@ function createEdgeFromAlternate(esprimaStatement, prevStatement, afterIfStateme
 function createEdgeFromWhileStatement(esprimaStatement, prevStatement, afterWhileStatement) {
     createEdgeToCurrent(esprimaStatement, prevStatement);
 
-    let lastInnerEsprimaStatement = esprimaStatement;
+    let lastInnerEsprimaStatement = null;
     let from = getNodeIndexFromStatement(esprimaStatement);
     let to = getNodeIndexFromStatement(esprimaStatement.body.body[0]);
     let edgeTrue = `n${from} -> n${to} [label="T"];`;
     edges.push(edgeTrue);
     esprimaStatement.body.body.forEach(function (innerEsprimaStatement) {
-        createEdgesFromStatement(innerEsprimaStatement, lastInnerEsprimaStatement, afterWhileStatement);
+        createEdgesFromStatement(innerEsprimaStatement, prevStatement, afterWhileStatement);
         lastInnerEsprimaStatement = innerEsprimaStatement;
     });
     from = getNodeIndexFromStatement(lastInnerEsprimaStatement);
@@ -205,10 +210,14 @@ function getRoutes (codeInput) {
 }
 
 function parseFirstLayer(code, environment) {
+    let toR = [];
     code.body.forEach(function(firstLayerStatement) {
         parseFirstLayerDispatcher(firstLayerStatement, environment);
+        checkRem(firstLayerStatement, toR);
     });
-
+    toR.forEach(function(r) {
+        remove(r,code.body);
+    });
 }
 
 function parseFirstLayerDispatcher(firstLayerStatement, environment) {
@@ -248,30 +257,10 @@ function parseVariableDeclarator(firstLayerStatement, environment) {
 }
 
 /**
- * Wrapper for assignment, update
+ * Wrapper for assignment
  */
 function parseExpressionStatement(firstLayerStatement, environment) {
-    let typeToHandlerMapping = new Map();
-    typeToHandlerMapping.set(AssignmentExpression , parseAssignmentExpression) ;
-    typeToHandlerMapping.set(UpdateExpression , parseUpdateExpression) ;
-
-    let func = typeToHandlerMapping.get(firstLayerStatement.expression.type);
-    if (!(func != null )) {
-        return;
-    }
-    func.call(this, firstLayerStatement.expression, environment);
-}
-
-function parseUpdateExpression(statement, environment) {
-    if (statement.argument.type === (Identifier))
-    {
-        if (environment.has(statement.argument.name))
-        {
-            statement.argument = environment.get(statement.argument.name);
-        }
-    }
-    let value = statement.argument;
-    environment.set(statement.argument.name,value);
+    parseAssignmentExpression(firstLayerStatement.expression, environment);
 }
 function parseAssignmentExpression(statement, environment) {
 
@@ -296,8 +285,13 @@ function parseFunctionDeclaration(firstLayerStatement, environment) {
 
 function parseSecondLayer(func, environment) {
     let functionBody = func.body;
+    let toR = [];
     functionBody.body.forEach(function(secondLayerStatement) {
         parseSecondLayerStatementDispatcher(secondLayerStatement, environment);
+        checkRem(secondLayerStatement,  toR);
+    });
+    toR.forEach(function(r) {
+        remove(r,functionBody.body);
     });
 }
 
@@ -320,9 +314,14 @@ function parseSecondLayerStatementDispatcher(secondLayerStatement, environment) 
 
 function parseWhileStatement(statement, environment) {
     sub(statement.test,environment);
+    let toR = [];
     let whileBody = statement.body;
     whileBody.body.forEach(function (innerStatement) {
         parseSecondLayerStatementDispatcher(innerStatement,environment);
+        checkRem(innerStatement, toR);
+    });
+    toR.forEach(function(r) {
+        remove(r,whileBody.body);
     });
 }
 
@@ -348,8 +347,13 @@ function parseIfOrElseStatementDispatcher(statement, environment) {
 }
 
 function parseBlockStatement(statement, environment) {
+    let toR = [];
     statement.body.forEach(function (exp) {
         parseSecondLayerStatementDispatcher(exp,environment);
+        checkRem(exp, toR);
+    });
+    toR.forEach(function(r) {
+        remove(r,statement.body);
     });
 }
 
@@ -369,7 +373,6 @@ function sub(statement, environment) {
     typeToHandler[BinaryExpression  ]   = subBinary;
     typeToHandler['MemberExpression']   = subMember; //Wrapper type for assignment
     typeToHandler[UnaryExpression   ]   = subUnary ;
-    typeToHandler[UpdateExpression   ]   = subUpdate ;
 
     let func = typeToHandler [statement.type];
     if (!(func != null )) {
@@ -416,19 +419,22 @@ function subUnary(statement, environment) {
     }
     sub(statement.argument,environment);
 }
-function subUpdate(statement, environment) {
-    if (statement.argument.type === (Identifier))
-    {
-        if (environment.has(statement.argument.name))
-        {
-            statement.argument = environment.get(statement.argument.name);
-        }
+
+/////////////////////// util ////////////////////////////
+function remove(toRemove, array) {
+    let index = array.indexOf(toRemove);
+    if (index > -1) {
+        array.splice(index, 1);
     }
-    sub(statement.argument,environment);
 }
 
+function checkRem(toRemove,keep) {
+    if (toRemove.type !== IfStatement && toRemove.type !== ReturnStatement && toRemove.type !== WhileStatement
+        && toRemove.type !== FunctionDeclaration)
+        keep.push(toRemove);
+}
 
-export {subUnary, subMember,
+export {remove, checkRem, subUnary, subMember,
     subBinary, sub, parseReturnStatement, parseBlockStatement, parseIfOrElseStatementDispatcher,
     parseWhileStatement, parseSecondLayerStatementDispatcher, parseFunctionDeclaration, parseSecondLayer,
     parseExpressionStatement, parseVariableDeclaration, parseFirstLayerDispatcher, parseFirstLayer};
