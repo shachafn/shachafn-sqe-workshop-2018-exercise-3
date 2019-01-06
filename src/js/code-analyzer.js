@@ -12,19 +12,197 @@ const BinaryExpression = 'BinaryExpression';
 const Identifier = 'Identifier';
 const UnaryExpression = 'UnaryExpression';
 
+import {nodes} from './app';
+export {createNodes};
+let nodeIndex = 1;
+let conditionsIndexes;
+let statementToNodeMap;
+function createNodes(esprimaParsedCode) {
+    //"n1 [label=\"-1-\n let a = x + 1\", shape=rectangle, style = filled, fillcolor = green];\n",
+    conditionsIndexes = [];
+    statementToNodeMap = new Map();
+    let stmts = esprimaParsedCode.body[0].body.body.forEach(function (esprimaStatement) {
+        createNodeFromStatement(esprimaStatement);
+    });
+}
+function createNodeFromStatement(esprimaStatement) {
 
-function getEnvironment(initializationsInput){
-    let environment = new Map();
-    if (initializationsInput !== '')
-    {
-        let parsedInits = esp.parseScript(initializationsInput);
-        parsedInits.body.forEach(function(init){
-            parseVariableDeclaration(init,environment,null);
+    let typeToHandlerMapping = new Map();
+    typeToHandlerMapping.set(IfStatement , createNodeFromIfStatement) ;
+    typeToHandlerMapping.set(WhileStatement , createNodeFromWhileStatement) ;
+
+    let func = typeToHandlerMapping.get(esprimaStatement.type);
+    if (!(func != null )) {
+        createNodeFromSimpleStatement(esprimaStatement);
+        return;
+    }
+    func.call(this, esprimaStatement);
+
+}
+function createNodeFromSimpleStatement(esprimaStatement) {
+    let shape = 'rectangle';
+    let originalStatement = esco.generate(esprimaStatement);
+    let node = `n${nodeIndex} [label="${originalStatement}", shape = ${shape}];`;
+    nodes.push(node);
+    statementToNodeMap.set(originalStatement,nodeIndex);
+    nodeIndex++;
+}
+function createNodeFromIfStatement(esprimaStatement) {
+    let shape = 'diamond';
+    let originalStatement = esco.generate(esprimaStatement.test);
+    let node = `n${nodeIndex} [label="${originalStatement}", shape = ${shape}];`;
+    nodes.push(node);
+    statementToNodeMap.set(originalStatement,nodeIndex);
+    nodeIndex++;
+    conditionsIndexes.push(nodeIndex); //Remember for true edge
+    esprimaStatement.consequent.body.forEach(function (innerEsprimaStatement) {
+        createNodeFromStatement(innerEsprimaStatement);
+    });
+    if (esprimaStatement.alternate !== null)
+        createNodesFromAlternate(esprimaStatement.alternate);
+
+    conditionsIndexes.push(nodeIndex); //Remember for false edge
+
+}
+
+function createNodesFromAlternate(esprimaStatement) {
+    if (esprimaStatement.type === IfStatement){
+        createNodeFromIfStatement(esprimaStatement);
+    }
+    else { //body
+        conditionsIndexes.push(nodeIndex+1);
+        esprimaStatement.body.forEach(function (innerEsprimaStatement) {
+            createNodeFromStatement(innerEsprimaStatement);
         });
     }
-    // Deep copy
-    return environment;
+
 }
+function createNodeFromWhileStatement(esprimaStatement) {
+    let shape = 'diamond';
+    let originalStatement = esco.generate(esprimaStatement.test);
+    let node = `n${nodeIndex} [label="${originalStatement}", shape = ${shape}];`;
+    nodes.push(node);
+    statementToNodeMap.set(originalStatement,nodeIndex);
+    nodeIndex++;
+    conditionsIndexes.push(nodeIndex); //Remember for true edge
+    esprimaStatement.body.body.forEach(function (innerEsprimaStatement) {
+        createNodeFromStatement(innerEsprimaStatement);
+    });
+    conditionsIndexes.push(nodeIndex); //Remember for false edge
+}
+
+import {edges} from './app';
+import * as esco from 'escodegen';
+export {createEdges};
+function createEdges(esprimaParsedCode) {
+    let stmts = esprimaParsedCode.body[0].body.body;
+    stmts.forEach(function (esprimaStatement, index) {
+        let prevStatement = index > 0 ? stmts[index-1] : null;
+        let nextStatement = index < stmts.length - 1 ? stmts[index+1] : null;
+        createEdgesFromStatement(esprimaStatement, prevStatement, nextStatement);
+    });
+}
+function createEdgesFromStatement(esprimaStatement, prevStatement, nextStatement) {
+
+    let typeToHandlerMapping = new Map();
+    typeToHandlerMapping.set(IfStatement , createEdgeFromIfStatement) ;
+    typeToHandlerMapping.set(WhileStatement , createEdgeFromWhileStatement) ;
+
+    let func = typeToHandlerMapping.get(esprimaStatement.type);
+    if (!(func != null )) {
+        createEdgeFromSimpleStatement(esprimaStatement, prevStatement);
+        return;
+    }
+    func.call(this, esprimaStatement, prevStatement, nextStatement);
+
+}
+function getNodeIndexFromStatement(esprimaStatement) {
+    return statementToNodeMap.get(esco.generate(
+        esprimaStatement.type === IfStatement || esprimaStatement.type === WhileStatement ?
+            esprimaStatement.test : esprimaStatement));
+}
+function createEdgeFromSimpleStatement(esprimaStatement, prevStatement) {
+    if (prevStatement == null)
+        return;
+    createEdgeToCurrent(esprimaStatement, prevStatement);
+}
+
+function createEdgeToCurrent(esprimaStatement, prevStatement) {
+    if (prevStatement.type !== IfStatement && prevStatement !== WhileStatement) {
+        let from = getNodeIndexFromStatement(prevStatement);
+        let to = getNodeIndexFromStatement(esprimaStatement);
+        let edge = `n${from} -> n${to};`;
+        edges.push(edge);
+    }
+}
+
+function createEdgeFromIfStatement(esprimaStatement, prevStatement, afterIfStatement) {
+    createEdgeToCurrent(esprimaStatement, prevStatement);
+    let lastInnerEsprimaStatement = null;
+    let from = getNodeIndexFromStatement(esprimaStatement);
+    let to = getNodeIndexFromStatement(esprimaStatement.consequent.body[0]);
+    let edgeTrue = `n${from} -> n${to} [label="T"];`; edges.push(edgeTrue);
+    esprimaStatement.consequent.body.forEach(function (innerEsprimaStatement) {
+        createEdgesFromStatement(innerEsprimaStatement, esprimaStatement, afterIfStatement);
+        lastInnerEsprimaStatement = innerEsprimaStatement;
+    });
+    from = getNodeIndexFromStatement(lastInnerEsprimaStatement);
+    to = getNodeIndexFromStatement(afterIfStatement);
+    let endEdge = `n${from} -> n${to};`;   edges.push(endEdge);
+
+    if (esprimaStatement.alternate !== null)
+        createEdgeFromAlternate(esprimaStatement.alternate, esprimaStatement, afterIfStatement);
+}
+
+function createEdgeFromAlternate(esprimaStatement, prevStatement, afterIfStatement) {
+    if (esprimaStatement.type === IfStatement){
+        let from = getNodeIndexFromStatement(prevStatement)
+        let to = getNodeIndexFromStatement(esprimaStatement);
+        let edgeFalse = `n${from} -> n${to} [label="F"];`;
+        edges.push(edgeFalse);
+        createEdgeFromIfStatement(esprimaStatement, prevStatement, afterIfStatement);
+    }
+    else { //body
+        let from = getNodeIndexFromStatement(prevStatement)
+        let to = getNodeIndexFromStatement(esprimaStatement.body[0]);
+        let edgeFalse = `n${from} -> n${to} [label="F"];`;
+        edges.push(edgeFalse);
+        let lastInnerEsprimaStatement = null;
+        esprimaStatement.body.forEach(function (innerEsprimaStatement) {
+            createEdgesFromStatement(innerEsprimaStatement, prevStatement, afterIfStatement);
+            lastInnerEsprimaStatement = innerEsprimaStatement;
+        });
+        from = getNodeIndexFromStatement(lastInnerEsprimaStatement)
+        to = getNodeIndexFromStatement(afterIfStatement);
+        let endEdge = `n${from} -> n${to};`;
+        edges.push(endEdge);
+    }
+
+}
+function createEdgeFromWhileStatement(esprimaStatement, prevStatement, afterWhileStatement) {
+    createEdgeToCurrent(esprimaStatement, prevStatement);
+
+    let lastInnerEsprimaStatement = null;
+    let from = getNodeIndexFromStatement(esprimaStatement);
+    let to = getNodeIndexFromStatement(esprimaStatement.body.body[0]);
+    let edgeTrue = `n${from} -> n${to} [label="T"];`;
+    edges.push(edgeTrue);
+    esprimaStatement.body.body.forEach(function (innerEsprimaStatement) {
+        createEdgesFromStatement(innerEsprimaStatement, prevStatement, afterWhileStatement);
+        lastInnerEsprimaStatement = innerEsprimaStatement;
+    });
+    from = getNodeIndexFromStatement(lastInnerEsprimaStatement);
+    to = getNodeIndexFromStatement(esprimaStatement);
+    let endEdge = `n${from} -> n${to};`;
+    edges.push(endEdge);
+
+    from = getNodeIndexFromStatement(esprimaStatement);
+    to = getNodeIndexFromStatement(afterWhileStatement);
+    let edgeFalse = `n${from} -> n${to} [label="F"];`;
+    edges.push(edgeFalse);
+
+}
+export {getRoutes};
 function getRoutes (codeInput) {
     let code = esp.parseScript(codeInput, {loc:true});
     parseFirstLayer(code,new Map());
@@ -256,7 +434,7 @@ function checkRem(toRemove,keep) {
         keep.push(toRemove);
 }
 
-export {getRoutes, getEnvironment, remove, checkRem, subUnary, subMember,
+export {remove, checkRem, subUnary, subMember,
     subBinary, sub, parseReturnStatement, parseBlockStatement, parseIfOrElseStatementDispatcher,
     parseWhileStatement, parseSecondLayerStatementDispatcher, parseFunctionDeclaration, parseSecondLayer,
     parseExpressionStatement, parseVariableDeclaration, parseFirstLayerDispatcher, parseFirstLayer};
