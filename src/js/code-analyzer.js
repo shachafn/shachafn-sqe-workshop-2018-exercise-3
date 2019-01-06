@@ -24,7 +24,6 @@ function createNodes(esprimaParsedCode) {
     });
     return appNodes;
 }
-export {createNodeFromStatement};
 function createNodeFromStatement(esprimaStatement, appNodes) {
 
     let typeToHandlerMapping = new Map();
@@ -39,6 +38,7 @@ function createNodeFromStatement(esprimaStatement, appNodes) {
     func.call(this, esprimaStatement, appNodes);
 
 }
+export {createNodeFromSimpleStatement};
 function createNodeFromSimpleStatement(esprimaStatement, nodes) {
     let shape = 'rectangle';
     let originalStatement = esco.generate(esprimaStatement);

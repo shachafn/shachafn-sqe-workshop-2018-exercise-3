@@ -1,18 +1,10 @@
 import assert from 'assert';
-import {createNodeFromStatement, createNodes, subUnary,
-    subMember, subBinary, sub, parseReturnStatement, parseBlockStatement,
-    parseIfOrElseStatementDispatcher, parseWhileStatement, parseSecondLayerStatementDispatcher,
+import {createNodeFromSimpleStatement, createNodes, subUnary,
+    subMember, subBinary, sub, parseReturnStatement,
+    parseIfOrElseStatementDispatcher, parseSecondLayerStatementDispatcher,
     parseFunctionDeclaration, parseSecondLayer, parseExpressionStatement, parseVariableDeclaration,
     parseFirstLayerDispatcher, parseFirstLayer, getRoutes} from '../src/js/code-analyzer';
 
-describe('Unit Testing - createNodeFromStatement', () => {
-    it('', () => {
-        //esprimaParsedCode.body[0].body.body.
-        let code = {type:''};
-        let actual = createNodeFromStatement(code);
-        assert.deepEqual([],[]);
-    });
-});
 describe('Unit Testing - createNodes', () => {
     it('', () => {
         //esprimaParsedCode.body[0].body.body.
