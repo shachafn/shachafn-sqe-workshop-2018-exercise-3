@@ -107,7 +107,7 @@ $(document).ready(function () {
 function paint() {
     let nodesString = nodes.join('\n');
     let nodesAndEdges = nodesString.concat(edges.join('\n'));
-    let formatted = `digraph cfg { forcelabels=true\n ${nodesAndEdges} }`;
+    let formatted = `digraph cfg {  ${nodesAndEdges} }`;
     let vz = new viz({Module, render});
     vz.renderSVGElement(formatted)
         .then(function (element) {

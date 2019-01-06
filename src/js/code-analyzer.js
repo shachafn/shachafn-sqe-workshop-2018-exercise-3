@@ -18,13 +18,13 @@ let nodeIndex = 1;
 let statementToNodeMap;
 function createNodes(esprimaParsedCode) {
     let appNodes = [];
-    //"n1 [label=\"-1-\n let a = x + 1\", shape=rectangle, style = filled, fillcolor = green];\n",
     statementToNodeMap = new Map();
     esprimaParsedCode.body[0].body.body.forEach(function (esprimaStatement) {
         createNodeFromStatement(esprimaStatement, appNodes);
     });
     return appNodes;
 }
+export {createNodeFromStatement};
 function createNodeFromStatement(esprimaStatement, appNodes) {
 
     let typeToHandlerMapping = new Map();

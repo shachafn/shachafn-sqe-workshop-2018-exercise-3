@@ -1,11 +1,26 @@
 import assert from 'assert';
-import {subUnary,
+import {createNodeFromStatement, createNodes, subUnary,
     subMember, subBinary, sub, parseReturnStatement, parseBlockStatement,
     parseIfOrElseStatementDispatcher, parseWhileStatement, parseSecondLayerStatementDispatcher,
     parseFunctionDeclaration, parseSecondLayer, parseExpressionStatement, parseVariableDeclaration,
     parseFirstLayerDispatcher, parseFirstLayer, getRoutes} from '../src/js/code-analyzer';
 
-
+describe('Unit Testing - createNodeFromStatement', () => {
+    it('', () => {
+        //esprimaParsedCode.body[0].body.body.
+        let code = {type:''};
+        let actual = createNodeFromStatement(code);
+        assert.deepEqual([],[]);
+    });
+});
+describe('Unit Testing - createNodes', () => {
+    it('', () => {
+        //esprimaParsedCode.body[0].body.body.
+        let code = {body:[{body:{body:[]}}]};
+        let actual = createNodes(code);
+        assert.deepEqual([],actual);
+    });
+});
 describe('Unit Testing - subUnary', () => {
     it('', () => {
         let m = new Map();
