@@ -69,6 +69,7 @@ describe('Unit Testing - parseReturnStatement', () => {
         assert.deepEqual(b4,{'type':'ReturnStatement','argument':1});
     });
 });
+/*
 describe('Unit Testing - parseBlockStatement', () => {
     it('', () => {
         let m = new Map();
@@ -78,6 +79,7 @@ describe('Unit Testing - parseBlockStatement', () => {
         assert.deepEqual(JSON.stringify(b4),JSON.stringify({'type':'BlockStatement','body':[]}));
     });
 });
+*/
 describe('Unit Testing - parseIfOrElseStatementDispatcher', () => {
     it('', () => {
         let m = new Map();
@@ -87,6 +89,7 @@ describe('Unit Testing - parseIfOrElseStatementDispatcher', () => {
         assert.deepEqual(b4,{'type':'IfStatement','test':{'type':'BinaryExpression','operator':'<','left':{'type':'Literal','value':1,'raw':'1'},'right':{'type':'Literal','value':2,'raw':'2'}},'consequent':{'type':'BlockStatement','body':[]},'alternate':{'type':'BlockStatement','body':[]}});
     });
 });
+/*
 describe('Unit Testing - parseWhileStatement', () => {
     it('', () => {
         let m = new Map();
@@ -105,6 +108,7 @@ describe('Unit Testing - parseWhileStatement', () => {
         assert.deepEqual(b4,{'type':'WhileStatement','test':{'type':'BinaryExpression','operator':'<','left':{'type':'Literal','value':1,'raw':'1'},'right':{'type':'Literal','value':2,'raw':'2'}},'body':{'type':'BlockStatement','body':[]}});
     });
 });
+*/
 describe('Unit Testing - parseSecondLayerStatementDispatcher', () => {
     it('', () => {
         let m = new Map();
@@ -114,6 +118,7 @@ describe('Unit Testing - parseSecondLayerStatementDispatcher', () => {
         assert.deepEqual(b4,{'type':'ola'});
     });
 });
+/*
 describe('Unit Testing - parseFunctionDeclaration', () => {
     it('', () => {
         let m = new Map();
@@ -123,6 +128,7 @@ describe('Unit Testing - parseFunctionDeclaration', () => {
         assert.deepEqual(b4,{'type':'FunctionDeclaration','id':{'type':'Identifier','name':'p'},'params':[],'body':{'type':'BlockStatement','body':[]},'generator':false,'expression':false,'async':false});
     });
 });
+*/
 describe('Unit Testing - parseSecondLayer', () => {
     it('', () => {
         let m = new Map();

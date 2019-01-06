@@ -78,6 +78,9 @@ function copyIfs(substitutedCode, esprimaParsedCode, map) {
     if (substitutedCode.alternate !== null && substitutedCode.alternate.type === 'BlockStatement')
         for(let i = 0 ; i < substitutedCode.alternate.body.length ; i++)
             map.set(substitutedCode.alternate.body[i],esprimaParsedCode.alternate.body[i]);
+    copyIf(substitutedCode, esprimaParsedCode, map);
+}
+function copyIf(substitutedCode, esprimaParsedCode, map) {
     if (substitutedCode.alternate !== null && substitutedCode.alternate.type === IfStatement) {
         copyIfs(substitutedCode.alternate,esprimaParsedCode.alternate, map);
         map.set(substitutedCode.alternate,esprimaParsedCode.alternate);
@@ -98,17 +101,20 @@ $(document).ready(function () {
         let substitutedCode = getRoutes(codeToParse);
         let substitutedToOriginal = getSubstitutedToOriginal(substitutedCode, esprimaParsedCode);
         color(substitutedCode, initsInput, substitutedToOriginal);
-        let nodesString = nodes.join('\n');
-        let nodesAndEdges = nodesString.concat(edges.join('\n'))
-        let formatted = `digraph cfg { forcelabels=true\n ${nodesAndEdges} }`;
-        let vz = new viz({Module, render});
-        vz.renderSVGElement(formatted)
-            .then(function (element) {
-                document.getElementById('svg-draw').innerHTML = '';
-                document.getElementById('svg-draw').append(element);
-            });
+        paint();
     });
 });
+function paint() {
+    let nodesString = nodes.join('\n');
+    let nodesAndEdges = nodesString.concat(edges.join('\n'));
+    let formatted = `digraph cfg { forcelabels=true\n ${nodesAndEdges} }`;
+    let vz = new viz({Module, render});
+    vz.renderSVGElement(formatted)
+        .then(function (element) {
+            document.getElementById('svg-draw').innerHTML = '';
+            document.getElementById('svg-draw').append(element);
+        });
+}
 function parseDefault(secondLayerStatement) {
     if (secondLayerStatement.type === BlockStatement)
         secondLayerStatement.body.forEach(function (exp) {
