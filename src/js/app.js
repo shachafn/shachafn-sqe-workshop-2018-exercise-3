@@ -1,80 +1,55 @@
 import * as esco from 'escodegen';
 import * as esp from 'esprima';
 import $ from 'jquery';
+import {getRoutes, getEnvironment} from './code-analyzer';
 import {Parser} from 'expr-eval';
 
 const BlockStatement = 'BlockStatement';
 const IfStatement = 'IfStatement';
 const WhileStatement = 'WhileStatement';
 
-let nodes;
-let edges;
-export {nodes,edges};
-let greenStatementsIndexes;
-let redStatementsIndexes;
+var result;
+var programRows = [];
+var greenStatementsIndexes = [];
+var redStatementsIndexes = [];
 
-
-function color(substitutedCode, initializationsInput) {
-    greenStatementsIndexes = [];
-    redStatementsIndexes = [];
-    let environment = getEnvironment(initializationsInput, substitutedCode);
-    substitutedCode.body[0].body.body.forEach(function (func) {
-        parseSecondLayerStatementDispatcher(func,environment);
-    });
-    replaceWithColor();
-}
-function replaceWithColor() {
-    greenStatementsIndexes.forEach(function (index) {
-        let myNode = nodes.filter(node => node.includes(`n${index-1}`))[0];
-        let cut = myNode.substr(0,myNode.length-2);
-        let filled = cut.concat(', style = filled, fillcolor = green];');
-        var deleteIndex = greenStatementsIndexes.indexOf(myNode);
-        greenStatementsIndexes.splice(deleteIndex, 1);
-        nodes.push(filled);
+function writeResult() {
+    let resultRows = esco.generate(result).split('\n');
+    resultRows.forEach(function (row) {
+        let p = document.createElement('P');
+        programRows.push(p);
+        let text = document.createTextNode(row+'\n');
+        p.appendChild(text);
+        document.body.appendChild(p);
     });
 }
 
-function getEnvironment(initializationsInput, substitutedCode){
-    let environment = new Map();
-    if (initializationsInput !== '')
-    {
-        let values = initializationsInput.split(',');
-        let esprimaParams = substitutedCode.body[0].params;
-        esprimaParams.forEach(function (esprimaParam) {
-            environment.set(esprimaParam.name,{type: 'Literal',raw: '1', value: Number(values[0])});
-            values.shift();
-        });
-    }
-    // Deep copy
-    return environment;
+function color(initializationsInput) {
+    let environment = getEnvironment(initializationsInput);
+    result.body.forEach(function (func) {
+        parseSecondLayer(func,environment);
+    });
 }
 
-import {createNodes, createEdges, getRoutes} from './code-analyzer';
-
-import viz from 'viz.js';
-import {Module, render} from 'viz.js/full.render';
 $(document).ready(function () {
-    $('#convert-button').click(() => {
-        nodes = [];        edges = [];
-        let codeToParse = $('#codePlaceHolder').val();
-        let initsInput = $('#initializationsPlaceholder').val();
+    $('#codeSubmissionButton').click(() => {
 
-        let esprimaParsedCode = esp.parse(codeToParse, {loc:true});
-        createNodes(esprimaParsedCode);
-        createEdges(esprimaParsedCode);
-        let substitutedCode = getRoutes(codeToParse);
-        color(substitutedCode, initsInput);
-        let nodesString = nodes.join('\n');
-        let nodesAndEdges = nodesString.concat(edges.join('\n'))
-        let formatted = `digraph cfg { forcelabels=true\n ${nodesAndEdges} }`;
-        let vz = new viz({Module, render});
-        vz.renderSVGElement(formatted)
-            .then(function (element) {
-                document.getElementById('svg-draw').innerHTML = '';
-                document.getElementById('svg-draw').append(element);
-            });
+        let codeToParse = $('#codePlaceholder').val();
+        let initsInput = $('#initializationsPlaceholder').val();
+        result = esp.parse(esco.generate(getRoutes(codeToParse)), {loc:true});
+        writeResult();
+        color(initsInput);
     });
 });
+
+
+
+function parseSecondLayer(func, environment) {
+    let functionBody = func.body;
+    functionBody.body.forEach(function(secondLayerStatement) {
+        parseSecondLayerStatementDispatcher(secondLayerStatement, environment);
+    });
+}
 
 function parseSecondLayerStatementDispatcher(secondLayerStatement, environment) {
     let typeToHandler = [];
@@ -92,8 +67,7 @@ function parseSecondLayerStatementDispatcher(secondLayerStatement, environment) 
 function getEnvironmentForParser(environment) {
     let map = {};
     environment.forEach(function(value,key) {
-        let generated = esco.generate(value)
-        map[key] = JSON.parse(generated);
+        map[key] = JSON.parse(esco.generate(value));
     });
     return map;
 }
@@ -108,6 +82,8 @@ function colorStatement(statement, environment) {
     let isTrue = expr.evaluate(environmentForParser);
     if (isTrue)
         greenStatementsIndexes.push(statement.loc.start.line-1);
+    else
+        redStatementsIndexes.push(statement.loc.start.line-1);
 
     return isTrue;
 }
@@ -149,6 +125,12 @@ function parseIfBody(consequent, environment) {
         parseSecondLayerStatementDispatcher(consequent,environment);
 }
 
+function redraw(statement, environment, cumulativeIsTrue, t) {
+    if (cumulativeIsTrue && t)
+    {
+        redStatementsIndexes.push(statement.loc.start.line-1);
+    }
+}
 
 function parseNextIf(statement, environment, cumulativeIsTrue) {
     let t = colorStatement(statement,environment);
@@ -156,6 +138,12 @@ function parseNextIf(statement, environment, cumulativeIsTrue) {
     {
         if (!t && !cumulativeIsTrue)
             greenStatementsIndexes.push(statement.alternate.loc.start.line-1);
+        else
+        {
+            parseSecondLayerStatementDispatcher(statement.alternate,environment);
+            redStatementsIndexes.push(statement.alternate.loc.start.line-1);
+        }
+        redraw(statement, environment, cumulativeIsTrue,t);
     }
     else
     {
