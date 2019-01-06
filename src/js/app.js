@@ -11,25 +11,29 @@ let nodes;
 let edges;
 export {nodes,edges};
 let greenStatementsIndexes;
-let redStatementsIndexes;
 
-
-function color(substitutedCode, initializationsInput) {
+function color(substitutedCode, initializationsInput, substitutedToOriginal) {
     greenStatementsIndexes = [];
-    redStatementsIndexes = [];
     let environment = getEnvironment(initializationsInput, substitutedCode);
     substitutedCode.body[0].body.body.forEach(function (func) {
-        parseSecondLayerStatementDispatcher(func,environment);
+        parseSecondLayerStatementDispatcher(func,environment, true);
     });
-    replaceWithColor();
+    replaceWithColor(substitutedToOriginal);
 }
-function replaceWithColor() {
-    greenStatementsIndexes.forEach(function (index) {
-        let myNode = nodes.filter(node => node.includes(`n${index-1}`))[0];
+function replaceWithColor(substitutedToOriginal) {
+    greenStatementsIndexes.forEach(function (exp) {
+        let myNode = nodes.filter(node => {
+            let original = substitutedToOriginal.get(exp);
+            if (original.type === IfStatement || original.type === WhileStatement) original = original.test;
+            let generated = esco.generate(original);
+            if (node.includes(generated))
+                return true;
+            return false;
+        })[0];
         let cut = myNode.substr(0,myNode.length-2);
         let filled = cut.concat(', style = filled, fillcolor = green];');
-        var deleteIndex = greenStatementsIndexes.indexOf(myNode);
-        greenStatementsIndexes.splice(deleteIndex, 1);
+        var deleteIndex = nodes.indexOf(myNode);
+        nodes.splice(deleteIndex, 1);
         nodes.push(filled);
     });
 }
@@ -53,17 +57,48 @@ import {createNodes, createEdges, getRoutes} from './code-analyzer';
 
 import viz from 'viz.js';
 import {Module, render} from 'viz.js/full.render';
+
+function getSubstitutedToOriginal(substitutedCode, esprimaParsedCode) {
+    let map = new Map();
+    for(let i = 0 ; i < substitutedCode.body[0].body.body.length ; i++) {
+        if (substitutedCode.body[0].body.body[i].type === IfStatement) {
+            copyIfs(substitutedCode.body[0].body.body[i],esprimaParsedCode.body[0].body.body[i], map);
+        }
+        else if (substitutedCode.body[0].body.body[i].type === WhileStatement) {
+            let body = substitutedCode.body[0].body.body[i].body;
+            for(let j = 0 ; j < body.body.length ; j++)
+                map.set(body.body[j],esprimaParsedCode.body[0].body.body[i].body.body[j]);
+        }
+        map.set(substitutedCode.body[0].body.body[i],esprimaParsedCode.body[0].body.body[i]);
+    }
+    return map;
+}
+function copyIfs(substitutedCode, esprimaParsedCode, map) {
+    for(let j = 0 ; j < substitutedCode.consequent.body.length ; j++)
+        map.set(substitutedCode.consequent.body[j],esprimaParsedCode.consequent.body[j]);
+    if (substitutedCode.alternate !== null && substitutedCode.alternate.type === 'BlockStatement')
+        for(let i = 0 ; i < substitutedCode.alternate.body.length ; i++)
+            map.set(substitutedCode.alternate.body[i],esprimaParsedCode.alternate.body[i]);
+    if (substitutedCode.alternate !== null && substitutedCode.alternate.type === IfStatement) {
+        copyIfs(substitutedCode.alternate,esprimaParsedCode.alternate, map);
+        map.set(substitutedCode.alternate,esprimaParsedCode.alternate);
+    }
+}
+
 $(document).ready(function () {
     $('#convert-button').click(() => {
         nodes = [];        edges = [];
         let codeToParse = $('#codePlaceHolder').val();
+        let splitInput = codeToParse.split('\n');
+        codeToParse = splitInput.filter(line => line !== '').join('\n');
         let initsInput = $('#initializationsPlaceholder').val();
 
         let esprimaParsedCode = esp.parse(codeToParse, {loc:true});
         createNodes(esprimaParsedCode);
         createEdges(esprimaParsedCode);
         let substitutedCode = getRoutes(codeToParse);
-        color(substitutedCode, initsInput);
+        let substitutedToOriginal = getSubstitutedToOriginal(substitutedCode, esprimaParsedCode);
+        color(substitutedCode, initsInput, substitutedToOriginal);
         let nodesString = nodes.join('\n');
         let nodesAndEdges = nodesString.concat(edges.join('\n'))
         let formatted = `digraph cfg { forcelabels=true\n ${nodesAndEdges} }`;
@@ -75,8 +110,16 @@ $(document).ready(function () {
             });
     });
 });
+function parseDefault(secondLayerStatement) {
+    if (secondLayerStatement.type === BlockStatement)
+        secondLayerStatement.body.forEach(function (exp) {
+            greenStatementsIndexes.push(exp);
+        });
+    else
+        greenStatementsIndexes.push(secondLayerStatement);
+}
 
-function parseSecondLayerStatementDispatcher(secondLayerStatement, environment) {
+function parseSecondLayerStatementDispatcher(secondLayerStatement, environment, isNeedColor) {
     let typeToHandler = [];
     typeToHandler[WhileStatement] = parseWhileStatement;
     typeToHandler[IfStatement] = parseIfOrElseStatementDispatcher;
@@ -84,6 +127,7 @@ function parseSecondLayerStatementDispatcher(secondLayerStatement, environment) 
 
     let func = typeToHandler [secondLayerStatement.type];
     if (!(func != null )) {
+        if (isNeedColor) parseDefault(secondLayerStatement);
         return;
     }
     func.call(this, secondLayerStatement, environment);
@@ -92,29 +136,26 @@ function parseSecondLayerStatementDispatcher(secondLayerStatement, environment) 
 function getEnvironmentForParser(environment) {
     let map = {};
     environment.forEach(function(value,key) {
-        let generated = esco.generate(value)
+        let generated = esco.generate(value);
         map[key] = JSON.parse(generated);
     });
     return map;
 }
 
-function colorStatement(statement, environment) {
 
+function parseWhileStatement(statement, environment) {
     let environmentForParser = getEnvironmentForParser(environment);
     let test = statement.test;
     let codeForTest = esco.generate(test);
     let parser = new Parser({operators:{'in': true}});
     let expr = parser.parse(codeForTest);
     let isTrue = expr.evaluate(environmentForParser);
-    if (isTrue)
-        greenStatementsIndexes.push(statement.loc.start.line-1);
-
-    return isTrue;
-}
-function parseWhileStatement(statement, environment) {
+    if (isTrue)  {
+        parseDefault(statement, environment);
+    }
     let whileBody = statement.body;
     whileBody.body.forEach(function (innerStatement) {
-        parseSecondLayerStatementDispatcher(innerStatement,environment);
+        parseSecondLayerStatementDispatcher(innerStatement,environment, true);
     });
 }
 
@@ -122,56 +163,55 @@ function parseWhileStatement(statement, environment) {
  * There is no such thing as ElseStatement, it is the alternate of an IfStatement, as a BlockStatement
  */
 function parseIfOrElseStatementDispatcher(statement, environment) {
-    cumulativeIf(statement,environment,false);
-}
-
-function cumulativeIf(statement, environment, cumulativeIsTrue) {
-    parseIfBody(statement.consequent, environment);
-
-    if (statement.alternate !== null)
-    {
-        parseNextIf(statement,environment,cumulativeIsTrue);
+    let environmentForParser = getEnvironmentForParser(environment);
+    let test = statement.test;
+    let codeForTest = esco.generate(test);
+    let parser = new Parser({operators:{'in': true}});
+    let expr = parser.parse(codeForTest);
+    let isTrue = expr.evaluate(environmentForParser);
+    if (isTrue)  {
+        parseIfBody(statement.consequent, environment);
     }
     else
-    {
-        colorStatement(statement,environment);
-    }
+        parseNextIf(statement.alternate, environment);
+    parseDefault(statement);
 }
 
 function parseIfBody(consequent, environment) {
     if (consequent.type === BlockStatement)
     {
         consequent.body.forEach(function (stmt) {
-            parseSecondLayerStatementDispatcher(stmt,environment);
+            parseSecondLayerStatementDispatcher(stmt,environment, true);
         });
     }
     else
-        parseSecondLayerStatementDispatcher(consequent,environment);
+        parseSecondLayerStatementDispatcher(consequent,environment, true);
 }
 
 
-function parseNextIf(statement, environment, cumulativeIsTrue) {
-    let t = colorStatement(statement,environment);
-    if (statement.alternate.type !== IfStatement)
-    {
-        if (!t && !cumulativeIsTrue)
-            greenStatementsIndexes.push(statement.alternate.loc.start.line-1);
+function parseNextIf(statement, environment) {
+    if (statement == null)        return;
+    if (statement.type === IfStatement) {
+        let environmentForParser = getEnvironmentForParser(environment);
+        let test = statement.test;
+        let codeForTest = esco.generate(test);
+        let parser = new Parser({operators:{'in': true}});
+        let expr = parser.parse(codeForTest);
+        let isTrue = expr.evaluate(environmentForParser);
+        if (isTrue) {
+            parseIfBody(statement.consequent, environment);
+        }
+        else
+            parseNextIf(statement.alternate, environment);
+        parseDefault(statement);
     }
     else
-    {
-        nextIff(statement, environment, cumulativeIsTrue,t);
-    }
-}
-function nextIff(statement, environment, cumulativeIsTrue, wasTrue) {
-    if (statement.alternate.type === IfStatement)
-    {
-        cumulativeIf(statement.alternate,environment,cumulativeIsTrue || wasTrue);
-    }
+        parseIfBody(statement, environment);
 }
 
 function parseBlockStatement(statement, environment) {
     statement.body.forEach(function (exp) {
-        parseSecondLayerStatementDispatcher(exp,environment);
+        parseSecondLayerStatementDispatcher(exp,environment, true);
     });
 }
 

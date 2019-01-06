@@ -32,20 +32,18 @@
     <div class="textAreaWrapper">
                 <textarea id="codePlaceHolder" title="Enter code here" style='width:400px; height:400px;'>
 function foo(x, y, z){
-    let a = x + 1;
-    let b = a + y;
-    let c = 0;
+   let a = x + 1;
+   let b = a + y;
+   let c = 0;
 
-    if (b < z) {
-        c = c + 5;
-    } else if (b < z * 2) {
-        c = c + x + 5;
-    } else {
-        c = c + z + 5;
-    }
+   while (a < z) {
+       if (a > 4) {
+           return a;
+       }
+   }
 
-    return c;
 }
+
                 </textarea>
     </div>
 </section>
