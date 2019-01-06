@@ -1,25 +1,11 @@
 import assert from 'assert';
-import {getEnvironment, remove, checkRem, subUnary,
+import {subUnary,
     subMember, subBinary, sub, parseReturnStatement, parseBlockStatement,
     parseIfOrElseStatementDispatcher, parseWhileStatement, parseSecondLayerStatementDispatcher,
     parseFunctionDeclaration, parseSecondLayer, parseExpressionStatement, parseVariableDeclaration,
     parseFirstLayerDispatcher, parseFirstLayer, getRoutes} from '../src/js/code-analyzer';
 
 
-describe('Unit Testing - remove', () => {
-    it('', () => {
-        let arr = [1];
-        remove(1,arr);
-        assert.deepEqual(arr,[]);
-    });
-});
-describe('Unit Testing - checkRem', () => {
-    it('', () => {
-        let arr = [];
-        checkRem(1,arr);
-        assert.deepEqual(arr,[1]);
-    });
-});
 describe('Unit Testing - subUnary', () => {
     it('', () => {
         let m = new Map();
@@ -171,18 +157,6 @@ describe('Unit Testing - parseFirstLayerDispatcher', () => {
         let b4 = {'type':'ola'};
         parseFirstLayerDispatcher(b4, m);
         assert.deepEqual(b4,{'type':'ola'});
-    });
-});
-describe('Unit Testing - getEnvironment', () => {
-    it('', () => {
-        let e = getEnvironment('let x=1;');
-        assert.deepEqual(e,{});
-    });
-});
-describe('Unit Testing - getEnvironment', () => {
-    it('', () => {
-        let e = getEnvironment('');
-        assert.deepEqual(e,{});
     });
 });
 describe('Unit Testing - parseFirstLayerDispatcher', () => {
