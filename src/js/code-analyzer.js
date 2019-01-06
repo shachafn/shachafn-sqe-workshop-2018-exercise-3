@@ -1,4 +1,10 @@
 import * as esp from 'esprima';
+import * as esco from 'escodegen';
+export {createNodes};
+export {createNodeFromSimpleStatement};
+export {getRoutes};
+export {getNodeIndexFromStatement};
+export {createEdges};
 
 const VariableDeclaration = 'VariableDeclaration';
 const FunctionDeclaration = 'FunctionDeclaration';
@@ -13,7 +19,6 @@ const BinaryExpression = 'BinaryExpression';
 const Identifier = 'Identifier';
 const UnaryExpression = 'UnaryExpression';
 
-export {createNodes};
 let nodeIndex = 1;
 let statementToNodeMap;
 function createNodes(esprimaParsedCode) {
@@ -38,7 +43,6 @@ function createNodeFromStatement(esprimaStatement, appNodes) {
     func.call(this, esprimaStatement, appNodes);
 
 }
-export {createNodeFromSimpleStatement};
 function createNodeFromSimpleStatement(esprimaStatement, nodes) {
     let shape = 'rectangle';
     let originalStatement = esco.generate(esprimaStatement);
@@ -86,8 +90,6 @@ function createNodeFromWhileStatement(esprimaStatement, nodes) {
     });
 }
 
-import * as esco from 'escodegen';
-export {createEdges};
 function createEdges(esprimaParsedCode) {
     let edges = [];
     let stmts = esprimaParsedCode.body[0].body.body;
@@ -112,7 +114,6 @@ function createEdgesFromStatement(esprimaStatement, prevStatement, nextStatement
     func.call(this, esprimaStatement, prevStatement, nextStatement, edges);
 
 }
-export {getNodeIndexFromStatement};
 function getNodeIndexFromStatement(esprimaStatement) {
     return statementToNodeMap.get(esco.generate(
         esprimaStatement.type === IfStatement || esprimaStatement.type === WhileStatement ?
@@ -189,7 +190,6 @@ function createEdgeFromWhileStatement(esprimaStatement, prevStatement, afterWhil
     let edgeFalse = `n${from} -> n${to} [label="F"];`; edges.push(edgeFalse);
 
 }
-export {getRoutes};
 function getRoutes (codeInput) {
     let code = esp.parseScript(codeInput, {loc:true});
     parseFirstLayer(code,new Map());

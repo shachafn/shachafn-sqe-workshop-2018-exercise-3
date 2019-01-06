@@ -2,6 +2,9 @@ import * as esco from 'escodegen';
 import * as esp from 'esprima';
 import $ from 'jquery';
 import {Parser} from 'expr-eval';
+import {createNodes, createEdges, getRoutes} from './code-analyzer';
+import viz from 'viz.js';
+import {Module,render} from 'viz.js/full.render';
 
 const BlockStatement = 'BlockStatement';
 const IfStatement = 'IfStatement';
@@ -48,14 +51,8 @@ function getEnvironment(initializationsInput, substitutedCode){
             values.shift();
         });
     }
-    // Deep copy
     return environment;
 }
-
-import {createNodes, createEdges, getRoutes} from './code-analyzer';
-
-import viz from 'viz.js';
-import {Module, render} from 'viz.js/full.render';
 
 function getSubstitutedToOriginal(substitutedCode, esprimaParsedCode) {
     let map = new Map();
@@ -146,7 +143,6 @@ function getEnvironmentForParser(environment) {
     });
     return map;
 }
-
 
 function parseWhileStatement(statement, environment) {
     let environmentForParser = getEnvironmentForParser(environment);
